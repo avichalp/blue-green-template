@@ -1,3 +1,5 @@
 #!/bin/bash
 
-echo "Hello, World!"
+apt-get update
+apt-get install -y nginx
+systemctl start nginx

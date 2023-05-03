@@ -7,10 +7,6 @@ terraform {
   }
 }
 
-variable "vm_name" {
-  type = string
-}
-
 variable "machine_type" {
   type = string
 }
@@ -27,13 +23,10 @@ variable "gcp_zone" {
   type = string
 }
 
-variable "user" {
-  type = string
-}
-
 variable "credentials_file" {
   type = string
 }
+
 
 provider "google" {
   credentials = file("${var.credentials_file}")
@@ -43,17 +36,18 @@ provider "google" {
 }
 
 
-resource "google_compute_instance" "validator" {
-  name         = var.vm_name
+resource "google_compute_instance_template" "my-instance" {
+  name         = "my-instance-template"
   machine_type = var.machine_type
   tags         = ["https-server", "grafana", "ssh-vm"]
 
-  boot_disk {
-    initialize_params {
-      image = "ubuntu-minimal-2204-jammy-v20221101"
-      type  = "pd-ssd"
-      size  = "50"
-    }
+  disk {
+    auto_delete  = true
+    boot         = true
+    device_name  = "persistent-disk-0"
+    mode         = "READ_WRITE"
+    source_image = "ubuntu-minimal-2204-jammy-v20221101"
+    type         = "pd-ssd"
   }
 
   service_account {
@@ -63,38 +57,26 @@ resource "google_compute_instance" "validator" {
 
   network_interface {
     network = "default"
-    access_config {}
-  }
+    access_config {
 
-  provisioner "file" {
-    source      = "bootstrap.sh"
-    destination = "/tmp/bootstrap.sh"
-
-    connection {
-      type        = "ssh"
-      user        = var.user
-      timeout     = "500s"
-      private_key = file("~/.ssh/google_compute_engine")
-      host        = self.network_interface[0].access_config[0].nat_ip
     }
   }
 
-}
-
-/* resource "google_compute_target_pool" "target_pool" {
-  name = "my-target-pool"
+  metadata_startup_script = file("${path.module}/bootstrap.sh")
 }
 
 resource "google_compute_instance_group_manager" "igm" {
   name               = "my-instance-group"
-  target_pools       = [google_compute_target_pool.target_pool.self_link]
   base_instance_name = "my-instance"
-  zone               = "us-central1-a"
-  instance_template  = google_compute_instance_template.template.self_link
+  zone               = var.gcp_zone
 
   named_port {
     name = "http"
     port = 80
+  }
+
+  version {
+    instance_template = google_compute_instance_template.my-instance.self_link
   }
 
   target_size = 2
@@ -105,33 +87,6 @@ resource "google_compute_instance_group_manager" "igm" {
     max_surge_fixed       = 1
     max_unavailable_fixed = 0
   }
-}
-
-resource "google_compute_autoscaler" "autoscaler" {
-  name = "my-autoscaler"
-  zone = "us-central1-a"
-
-  target = google_compute_instance_group_manager.igm.self_link
-
-  autoscaling_policy {
-    scale_down_control {
-      time_window_sec          = 300
-      stabilization_window_sec = 300
-    }
-
-    cpu_utilization {
-      target = 0.5
-    }
-
-    min_replicas = 2
-    max_replicas = 5
-  }
-}
-
-resource "google_compute_global_forwarding_rule" "forwarding_rule" {
-  name       = "my-forwarding-rule"
-  target     = google_compute_target_http_proxy.http_proxy.self_link
-  port_range = "80"
 }
 
 resource "google_compute_target_http_proxy" "http_proxy" {
@@ -150,7 +105,7 @@ resource "google_compute_backend_service" "backend_service" {
   timeout_sec = 10
 
   backend {
-    group = google_compute_instance_group_manager.igm.self_link
+    group = google_compute_instance_group_manager.igm.instance_group
   }
 
   health_checks = [
@@ -177,4 +132,18 @@ resource "google_compute_global_forwarding_rule" "forwarding_rule" {
 resource "google_compute_global_address" "global_address" {
   name = "my-global-address"
 }
- */
+
+// Uncolored
+resource "google_compute_firewall" "allow_health_check" {
+  name    = "allow-health-check"
+  network = "default"
+
+  allow {
+    protocol = "tcp"
+    ports    = ["80"]
+  }
+
+  # Health check probes come from addresses in the ranges 130.211.0.0/22 and 35.191.0.0/16
+  source_ranges = ["130.211.0.0/22", "35.191.0.0/16"]
+}
+
