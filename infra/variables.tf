@@ -15,6 +15,10 @@ variable "active_stack" {
   default     = "blue"
 }
 
+variable "deployment" {
+  description = "Boolean to tell if it is deployment"
+}
+
 variable "credentials_file" {
   type = string
 }
@@ -26,3 +30,5 @@ variable "blue_version" {
 variable "green_version" {
   description = "Version of the app (commit hash)"
 }
+
+

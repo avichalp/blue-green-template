@@ -17,3 +17,7 @@ variable "stack_name" {
 variable "app_version" {
   description = "Version of the app (commit hash)"
 }
+
+variable "create_stack" {
+    description = "True for createing the Green stack"
+}

@@ -24,6 +24,10 @@ variable "active_stack" {
   default     = "blue"
 }
 
+variable "add_backend" {
+  description = "Decides if we want to create 2 backend or 1"
+}
+
 variable "instance_group_blue" {
   type = any
 }
