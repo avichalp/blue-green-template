@@ -1,6 +1,6 @@
 # blue-green
 
-A template for Blue Green deployment using GCP and Terraform
+A template for Blue Green deployment using GCP and Terraform. Inspired by the design described [here](https://github.com/psimakov/gcp-mig-simple)
 
 ![blue-green](https://user-images.githubusercontent.com/5305984/236659370-ac2c9ea9-fe69-4bb3-aaf4-19f36596657d.png)
 
