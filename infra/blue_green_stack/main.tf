@@ -1,5 +1,4 @@
 resource "google_compute_instance_template" "instance_template" {
-  count        = var.create_stack ? 1 : 0
   name         = "${var.stack_name}-instance-template-${var.app_version}"
   machine_type = "n1-standard-1"
 
@@ -37,7 +36,6 @@ resource "google_compute_instance_template" "instance_template" {
 }
 
 resource "google_compute_instance_group_manager" "instance_group_manager" {
-  count              = var.create_stack ? 1 : 0
   name               = "${var.stack_name}-instance-group-manager-${var.app_version}"
   base_instance_name = "${var.stack_name}-instance"
   zone               = var.gcp_zone
@@ -48,7 +46,7 @@ resource "google_compute_instance_group_manager" "instance_group_manager" {
   }
 
   version {
-    instance_template = google_compute_instance_template.instance_template[count.index].self_link
+    instance_template = google_compute_instance_template.instance_template.self_link
   }
 
   target_size = 1
@@ -63,15 +61,11 @@ resource "google_compute_instance_group_manager" "instance_group_manager" {
 }
 
 resource "google_compute_global_address" "global_address" {
-  count   = var.create_stack ? 1 : 0
-  project = var.gcp_project
-  name    = "${var.stack_name}-global-address"
+  name = "${var.stack_name}-global-address"
 }
 
 resource "google_compute_health_check" "health_check" {
-  count   = var.create_stack ? 1 : 0
-  project = var.gcp_project
-  name    = "${var.stack_name}-health-check"
+  name = "${var.stack_name}-health-check"
   http_health_check {
     port         = 80
     request_path = "/"
@@ -79,13 +73,11 @@ resource "google_compute_health_check" "health_check" {
 }
 
 resource "google_compute_backend_service" "backend_service" {
-  count         = var.create_stack ? 1 : 0
-  project       = var.gcp_project
   name          = "${var.stack_name}-backend-service"
-  health_checks = [google_compute_health_check.health_check[count.index].self_link]
+  health_checks = [google_compute_health_check.health_check.self_link]
 
   backend {
-    group = google_compute_instance_group_manager.instance_group_manager[count.index].instance_group
+    group = google_compute_instance_group_manager.instance_group_manager.instance_group
   }
 
   session_affinity = "NONE"
@@ -93,27 +85,21 @@ resource "google_compute_backend_service" "backend_service" {
 }
 
 resource "google_compute_url_map" "url_map" {
-  count   = var.create_stack ? 1 : 0
-  project = var.gcp_project
-  name    = "${var.stack_name}-url-map"
+  name = "${var.stack_name}-url-map"
 
-  default_service = google_compute_backend_service.backend_service[count.index].self_link
+  default_service = google_compute_backend_service.backend_service.self_link
 }
 
 resource "google_compute_target_http_proxy" "http_proxy" {
-  count   = var.create_stack ? 1 : 0
-  project = var.gcp_project
   name    = "${var.stack_name}-http-proxy"
-  url_map = google_compute_url_map.url_map[count.index].self_link
+  url_map = google_compute_url_map.url_map.self_link
 }
 
 resource "google_compute_global_forwarding_rule" "forwarding_rule" {
-  count      = var.create_stack ? 1 : 0
-  project    = var.gcp_project
   name       = "${var.stack_name}-forwarding-rule"
-  target     = google_compute_target_http_proxy.http_proxy[count.index].self_link
+  target     = google_compute_target_http_proxy.http_proxy.self_link
   port_range = "80"
-  ip_address = google_compute_global_address.global_address[count.index].id
+  ip_address = google_compute_global_address.global_address.address
 }
 
 output "instance_group_manager" {
