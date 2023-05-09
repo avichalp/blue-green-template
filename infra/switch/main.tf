@@ -8,8 +8,7 @@ resource "google_compute_health_check" "health_check" {
 }
 
 resource "google_compute_global_address" "switch_global_address" {
-  project = var.gcp_project
-  name    = "switch-global-address"
+  name = "switch-global-address"
 }
 
 resource "google_compute_backend_service" "switch_backend_service" {
@@ -21,12 +20,22 @@ resource "google_compute_backend_service" "switch_backend_service" {
   health_checks = [
     google_compute_health_check.health_check.id
   ]
-
-  backend {
-    group           = var.active_stack == "blue" ? var.instance_group_blue : var.instance_group_green
-    capacity_scaler = 1.0
+  dynamic "backend" {
+    for_each = var.instance_group_blue
+    content {
+      group           = backend.value.instance_group
+      balancing_mode  = "UTILIZATION"
+      capacity_scaler = backend.value.base_instance_name == "${var.active_stack}-instance-${var.app_version_blue}" ? 1 : 0
+    }
   }
-
+  dynamic "backend" {
+    for_each = var.instance_group_green
+    content {
+      group           = backend.value.instance_group
+      balancing_mode  = "UTILIZATION"      
+      capacity_scaler = backend.value.base_instance_name == "${var.active_stack}-instance-${var.app_version_green}" ? 1 : 0
+    }
+  }
   session_affinity = "NONE"
   enable_cdn       = false
 }
@@ -49,6 +58,6 @@ resource "google_compute_global_forwarding_rule" "switch_forwarding_rule" {
   target                = google_compute_target_http_proxy.switch_http_proxy.self_link
   port_range            = "80"
   load_balancing_scheme = "EXTERNAL_MANAGED"
-  ip_address            = google_compute_global_address.switch_global_address
+  ip_address            = google_compute_global_address.switch_global_address.address
 }
 

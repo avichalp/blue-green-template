@@ -23,3 +23,15 @@ variable "instance_group_green" {
   type = any
 }
 
+variable "deployment" {
+  type = bool
+}
+
+variable "app_version_blue" {
+  description = "Version of the app (commit hash)"
+}
+
+variable "app_version_green" {
+  description = "Version of the app (commit hash)"
+}
+
